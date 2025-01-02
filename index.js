@@ -1,42 +1,39 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const cors = require("cors");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "*", // Replace "*" with specific domains for better security
     methods: ["GET", "POST"],
   },
 });
 
+// Use CORS middleware for all routes
+app.use(cors());
 
+// Serve static files
 app.use(express.static("public"));
 
-
-
-
-// Event when a user connects
+// WebSocket events
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // Join a specific room based on the lecture ID
   socket.on("joinLecture", (lectureId) => {
     console.log(`User ${socket.id} joined lecture ${lectureId}`);
-    socket.join(lectureId); // Join the room
+    socket.join(lectureId);
   });
 
-  // Handle chat messages
   socket.on("chat message", ({ lectureId, message }) => {
     console.log(
       `Message from ${socket.id} in lecture ${lectureId}: ${message}`
     );
-    // Broadcast the message to the specific room
     io.to(lectureId).emit("chat message", { userId: socket.id, message });
   });
 
-  // Event when a user disconnects
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
