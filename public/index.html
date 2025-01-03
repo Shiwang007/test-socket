@@ -1,35 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Live Chat</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.io Frontend</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
 </head>
 <body>
-  <h1>Live Chat for Lecture</h1>
-  <input id="messageInput" placeholder="Type a message">
-  <button onclick="sendMessage()">Send</button>
-  <ul id="messages"></ul>
+  <div class="container">
+    <!-- Login Section -->
+    <div id="loginSection">
+      <h2>Login</h2>
+      <input type="text" id="mobile" placeholder="Enter Mobile Number" />
+      <input type="password" id="password" placeholder="Enter Password" />
+      <button id="loginBtn">Login</button>
+      <div id="loginError" class="error"></div>
+    </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
+    <!-- Lecture Section -->
+    <div id="lectureSection" style="display:none;">
+      <h2>Join a Lecture</h2>
+      <input type="text" id="lectureId" placeholder="Enter Lecture ID" />
+      <button id="joinLectureBtn">Join Lecture</button>
+      <div id="lectureError" class="error"></div>
+    </div>
 
-    // Replace 'lecture1' with the lecture ID the user is attending
-    const lectureId = 'lecture1';
-    socket.emit('joinLecture', lectureId);
+    <!-- Chat Section -->
+    <div id="chatSection" style="display:none;">
+      <h2>Chat</h2>
+      <div id="messages"></div>
+      <textarea id="chatMessage" placeholder="Enter message"></textarea>
+      <button id="sendMessageBtn">Send Message</button>
+    </div>
+  </div>
 
-    // Send a message
-    function sendMessage() {
-      const message = document.getElementById('messageInput').value;
-      socket.emit('chat message', { lectureId, message });
-      document.getElementById('messageInput').value = '';
-    }
-
-    // Receive messages
-    socket.on('chat message', (data) => {
-      const li = document.createElement('li');
-      li.textContent = `${data.userId}: ${data.message}`;
-      document.getElementById('messages').appendChild(li);
-    });
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
