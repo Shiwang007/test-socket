@@ -7,7 +7,6 @@ const User = require("./models/user");
 const cors = require("cors");
 
 
-
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: "./config/.env" });
 }
