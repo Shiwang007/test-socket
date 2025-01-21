@@ -6,7 +6,6 @@ const { connectDatabase } = require("./config/database");
 const User = require("./models/user");
 const cors = require("cors");
 
-
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: "./config/.env" });
 }
@@ -22,19 +21,14 @@ const io = new Server(server, {
   },
 });
 
-// Serve static files
+const messageQueue = new Map();
+
 app.use(express.static("public"));
 app.use(cors());
 app.use(express.json());
 
-
-
-
-
 io.use(async (socket, next) => {
   const { token } = socket.handshake.auth;
-  console.log(socket.handshake.auth);
-  console.log(token);
   if (!token) {
     console.log("Authentication failed: No token provided");
     socket.emit("authenticationError", {
@@ -45,7 +39,6 @@ io.use(async (socket, next) => {
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN);
-    console.log(decoded);
     const user = await User.findById(decoded._id);
     if (!user) {
       console.log("Authentication failed: User not found");
@@ -79,7 +72,6 @@ io.use(async (socket, next) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.user);
 
-  // Send user details on connection
   socket.emit("userDetails", {
     code: 200,
     message: "User details retrieved successfully.",
@@ -90,7 +82,6 @@ io.on("connection", (socket) => {
     },
   });
 
-  // Handle joining a lecture
   socket.on("joinLecture", (lectureId) => {
     if (!lectureId) {
       console.log("Join lecture error: Missing lectureId");
@@ -100,9 +91,6 @@ io.on("connection", (socket) => {
       });
     }
 
-    console.log(socket.rooms)
-
-    // Check if the user is already in the room
     if (socket.rooms.has(lectureId)) {
       console.log(
         `User ${socket.user.username} is already in lecture ${lectureId}`
@@ -115,14 +103,21 @@ io.on("connection", (socket) => {
 
     console.log(`User ${socket.user.username} joined lecture ${lectureId}`);
     socket.join(lectureId);
+
+    // Send the last 30 messages from the message queue
+    const messages = messageQueue.get(lectureId) || [];
+    socket.emit("lectureMessages", {
+      code: 200,
+      message: "Last 30 messages retrieved successfully.",
+      data: messages,
+    });
+
     socket.emit("joinSuccess", {
       code: 200,
       message: `Successfully joined lecture ${lectureId}`,
     });
   });
 
-
-  // Handle chat messages
   socket.on("chat message", ({ lectureId, message }) => {
     if (!lectureId) {
       console.log("Chat message error: Missing lectureId");
@@ -140,22 +135,37 @@ io.on("connection", (socket) => {
         message: "Message cannot be empty.",
       });
     }
+
     console.log(
       `Message from ${socket.user.username} in lecture ${lectureId}: ${message}`
     );
+
+    // Add the message to the queue
+    if (!messageQueue.has(lectureId)) {
+      messageQueue.set(lectureId, []);
+    }
+    const lectureMessages = messageQueue.get(lectureId);
+    lectureMessages.push({
+      userId: socket.user.id,
+      username: socket.user.username,
+      profilePic: socket.user.profilePic,
+      message,
+    });
+
+    // Keep only the last 30 messages
+    if (lectureMessages.length > 30) {
+      lectureMessages.shift();
+    }
+
+    messageQueue.set(lectureId, lectureMessages);
+
     io.to(lectureId).emit("chat message", {
       code: 200,
       message: "Message sent successfully.",
-      data: {
-        userId: socket.user.id,
-        username: socket.user.username,
-        profilePic: socket.user.profilePic,
-        message,
-      },
+      data: lectureMessages[lectureMessages.length - 1],
     });
   });
 
-  // Handle disconnection
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.user.username);
   });
